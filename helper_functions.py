@@ -1842,3 +1842,88 @@ def plot_movie_coproduction_heatmap(df, top_n): # Aditya
     plt.yticks(rotation=0)
     plt.tight_layout()
     plt.show()
+
+def plot_genre_frequency_by_country(df, top_n): #Aditya
+    """
+    Plots the frequency of unique shows per 'listed_in' (genre) for each country,
+    using a Netflix-inspired red-black-white theme.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing at least 'country', 'listed_in', and 'show_id'.
+    top_n : int, optional
+        Number of top countries to display based on unique show counts.
+    """
+
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    # --- Validate columns ---
+    required_cols = {'country', 'listed_in', 'show_id'}
+    if not required_cols.issubset(df.columns):
+        raise ValueError(f"DataFrame must contain columns: {required_cols}")
+
+    # --- Step 1: Count unique show_id per (country, listed_in) ---
+    country_genre_counts = (
+        df.groupby(['country', 'listed_in'])['show_id']
+          .nunique()
+          .reset_index(name='count')
+    )
+
+    # --- Step 2: Focus on top N countries overall ---
+    top_countries = (
+        df.groupby('country')['show_id']
+          .nunique()
+          .sort_values(ascending=False)
+          .head(top_n)
+          .index
+    )
+
+    filtered = country_genre_counts[country_genre_counts['country'].isin(top_countries)]
+
+    # --- Step 3: Get unique genres ---
+    unique_genres = filtered['listed_in'].unique()
+    num_genres = len(unique_genres)
+
+    # --- Netflix-inspired color palette ---
+    netflix_palette = ['#E50914', '#221f1f', '#b81d24', '#737373', '#f5f5f1']
+
+    # --- White background with clean style ---
+    sns.set_theme(style="whitegrid", rc={'axes.facecolor': 'white', 'figure.facecolor': 'white'})
+
+    # --- Create subplots dynamically ---
+    fig, axes = plt.subplots(num_genres, 1, figsize=(14, 5 * num_genres))
+
+    # Handle single-genre case (axes not iterable)
+    if num_genres == 1:
+        axes = [axes]
+
+    for i, genre in enumerate(unique_genres):
+        subset = filtered[filtered['listed_in'] == genre]
+        subset = subset.sort_values(by='count', ascending=False)  # Sort descending
+
+        sns.barplot(
+            data=subset,
+            x='country',
+            y='count',
+            hue='listed_in',
+            dodge=False,
+            ax=axes[i],
+            palette=netflix_palette
+        )
+
+        # --- Style customization ---
+        axes[i].set_title(f"{genre} — Unique Shows per Country", fontsize=14, color='#E50914', weight='bold')
+        axes[i].set_xlabel("Country", fontsize=12, color='black')
+        axes[i].set_ylabel("Unique Show Count", fontsize=12, color='black')
+        axes[i].tick_params(axis='x', rotation=75, labelcolor='black')
+        axes[i].tick_params(axis='y', labelcolor='black')
+        axes[i].legend_.remove()
+
+        # Add gridlines for clarity
+        axes[i].grid(axis='y', linestyle='--', alpha=0.6)
+
+    plt.tight_layout()
+    plt.show()
